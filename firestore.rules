@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidIconType(data) {
+      return data.keys().hasAll(['nome', 'imagem', 'categoria', 'ativo', 'ordem']) &&
+             data.keys().hasOnly(['nome', 'imagem', 'categoria', 'ativo', 'ordem']) &&
+             data.nome is string && data.nome.size() > 0 && data.nome.size() <= 60 &&
+             data.imagem is string && data.imagem.size() > 0 && data.imagem.size() <= 200 &&
+             data.categoria is string && data.categoria.size() > 0 && data.categoria.size() <= 50 &&
+             data.ativo is bool &&
+             data.ordem is number;
+    }
+
+    function isValidLocation(data) {
+      return data.keys().hasAll(['nome', 'latitude', 'longitude', 'ativo']) &&
+             data.keys().hasOnly(['nome', 'descricao', 'latitude', 'longitude', 'ativo', 'createdAt']) &&
+             data.nome is string && data.nome.size() > 0 && data.nome.size() <= 120 &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.ativo is bool;
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['locationId', 'iconTypeId', 'latitude', 'longitude', 'status', 'clickCount']) &&
+             data.keys().hasOnly(['locationId', 'iconTypeId', 'latitude', 'longitude', 'descricao', 'createdAt', 'status', 'clickCount']) &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.status in ['ativa', 'verificada', 'arquivada', 'descartada'] &&
+             data.clickCount is number && data.clickCount >= 0 &&
+             !data.keys().hasAny(['createdBy', 'operatorId', 'operatorUid', 'operatorName', 'operatorEmail', 'userId', 'uid', 'author', 'authorId', 'userEmail', 'ip', 'phone']);
+    }
+
+    function isValidInteraction(data) {
+      return data.keys().hasAll(['reportId', 'voteHash']) &&
+             data.keys().hasOnly(['reportId', 'voteHash', 'createdAt']) &&
+             data.reportId is string &&
+             data.voteHash is string;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['nome', 'email', 'role', 'ativo']) &&
+             data.keys().hasOnly(['nome', 'email', 'role', 'ativo', 'createdAt', 'uid']) &&
+             data.nome is string && data.nome.size() > 0 && data.nome.size() <= 120 &&
+             data.email is string &&
+             data.role in ['ADMINISTRADOR', 'OPERADOR'] &&
+             data.ativo is bool;
+    }
+
+    // 1. Coleção ICON TYPES (Pública para leitura de catálogo no mapa e formulários)
+    match /iconTypes/{iconId} {
+      allow read: if true;
+      allow create, update: if isValidIconType(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 2. Coleção LOCATIONS (Pública para leitura de locais de referência)
+    match /locations/{locationId} {
+      allow read: if true;
+      allow create, update: if isValidLocation(request.resource.data);
+      allow delete: if true;
+    }
+
+    // 3. Coleção REPORTS (Denúncias anônimas no mapa)
+    match /reports/{reportId} {
+      // Visualização pública das denúncias no mapa
+      allow read: if true;
+
+      // Criação anônima: deve respeitar o esquema estrito e não possuir identificador de autor
+      allow create: if isValidReport(request.resource.data);
+
+      // Atualização controlada:
+      // Permitido apenas incremento atômico de clickCount (+1) ou alteração de status
+      // Estritamente proibido mover coordenadas (latitude/longitude) ou injetar campos de autoria
+      allow update: if (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clickCount']) &&
+        request.resource.data.clickCount == resource.data.clickCount + 1
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+        request.resource.data.status in ['ativa', 'verificada', 'arquivada', 'descartada']
+      );
+
+      // Exclusão/moderação permitida
+      allow delete: if true;
+    }
+
+    // 4. Coleção INTERACTIONS (Apoio anônimo)
+    match /interactions/{interactionId} {
+      allow read: if true;
+      allow create: if isValidInteraction(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // 5. Coleção USERS (Perfis de operadores e administradores)
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if isValidUser(request.resource.data);
+      allow update: if isValidUser(request.resource.data) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'ativo', 'nome', 'email']) &&
+         request.resource.data.role in ['ADMINISTRADOR', 'OPERADOR'] &&
+         request.resource.data.ativo is bool);
+      allow delete: if true;
+    }
+
+    // 6. Test connection probe
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // 7. Persistência de autenticação e auditoria do backend serverless
+    match /system_auth/{docId} {
+      allow read, write: if true;
+    }
+
+    // 8. Monitoramento Centralizado de Logs e Falhas do Sistema
+    match /system_logs/{logId} {
+      allow create: if request.resource.data.keys().hasAll(['timestamp', 'level', 'category', 'errorMessage']) &&
+                       request.resource.data.level in ['CRITICAL', 'ERROR', 'WARN', 'INFO'];
+      allow read: if true;
+      allow delete: if true;
+      allow update: if false;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "REDE VIGIA",
+  "description": "Aplicativo de denúncias georreferenciadas anônimas em tempo real para smartphones Android com Google Maps e Firestore.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

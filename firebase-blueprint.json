@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil de usuário do sistema Rede Vigia",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "Nome completo do usuário",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "E-mail do usuário",
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "description": "Perfil de acesso",
+          "enum": ["ADMINISTRADOR", "OPERADOR"]
+        },
+        "ativo": {
+          "type": "boolean",
+          "description": "Status de ativação da conta"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data de criação"
+        }
+      },
+      "required": ["nome", "email", "role", "ativo"]
+    },
+    "Location": {
+      "title": "Location",
+      "description": "Local georreferenciado para agrupamento e foco no mapa",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "Nome do local",
+          "maxLength": 120
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Descrição detalhada do local",
+          "maxLength": 500
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude geográfica"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude geográfica"
+        },
+        "ativo": {
+          "type": "boolean",
+          "description": "Se o local está ativo para visualização"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data de cadastro"
+        }
+      },
+      "required": ["nome", "latitude", "longitude", "ativo"]
+    },
+    "IconType": {
+      "title": "IconType",
+      "description": "Tipo de ícone administrável para categorização de ocorrências",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "description": "Nome do tipo de ícone",
+          "maxLength": 60
+        },
+        "imagem": {
+          "type": "string",
+          "description": "Representação visual do ícone (emoji, símbolo ou URL)",
+          "maxLength": 200
+        },
+        "categoria": {
+          "type": "string",
+          "description": "Categoria do ícone",
+          "maxLength": 50
+        },
+        "ativo": {
+          "type": "boolean",
+          "description": "Se está disponível para uso dos operadores"
+        },
+        "ordem": {
+          "type": "number",
+          "description": "Posição na ordenação visual"
+        }
+      },
+      "required": ["nome", "imagem", "categoria", "ativo", "ordem"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "Denúncia anônima georreferenciada. Proibido conter qualquer identificador de autor.",
+      "type": "object",
+      "properties": {
+        "locationId": {
+          "type": "string",
+          "description": "ID do local de referência associado",
+          "maxLength": 128
+        },
+        "iconTypeId": {
+          "type": "string",
+          "description": "ID do tipo de ícone",
+          "maxLength": 128
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude geográfica confirmada"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude geográfica confirmada"
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Descrição opcional da ocorrência",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data/hora de registro"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status da denúncia",
+          "enum": ["ativa", "verificada", "arquivada", "descartada"]
+        },
+        "clickCount": {
+          "type": "number",
+          "description": "Contador de confirmações recebidas"
+        }
+      },
+      "required": ["locationId", "iconTypeId", "latitude", "longitude", "status", "clickCount"]
+    },
+    "Interaction": {
+      "title": "Interaction",
+      "description": "Registro anônimo de confirmação/apoio para prevenir votos duplicados",
+      "type": "object",
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "description": "ID da denúncia apoiada",
+          "maxLength": 128
+        },
+        "voteHash": {
+          "type": "string",
+          "description": "Hash criptográfico anônimo para evitar duplo voto",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Data do apoio"
+        }
+      },
+      "required": ["reportId", "voteHash"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Documentos de usuários cadastrados"
+    },
+    "/locations/{locationId}": {
+      "schema": "Location",
+      "description": "Locais de referência georreferenciados"
+    },
+    "/iconTypes/{iconId}": {
+      "schema": "IconType",
+      "description": "Tipos de ícones customizáveis para o painel"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Denúncias totalmente anônimas no mapa"
+    },
+    "/interactions/{interactionId}": {
+      "schema": "Interaction",
+      "description": "Interações de confirmação sem identificação pessoal"
+    }
+  }
+}
